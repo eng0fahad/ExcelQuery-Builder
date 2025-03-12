@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Excel to SQL Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: Arial, sans-serif;
+        /* background: radial-gradient(circle, rgb(255, 162, 0) 0%, #ff5500b0 100%); */
+        background-size: 100vw 100vh;
+        background: linear-gradient(334deg, #000000, #00b7ff, #000000);
+        background-attachment: fixed;
+        background-size: 400% 180%;
+        animation: gradient-animation 11s ease infinite;
+      }
+
+      h1 {
+        color: #007bff;
+      }
+
+      .switch-div {
+        display: flex;
+        justify-content: space-between;
+        max-width: 300px;
+        margin: 50px auto;
+        text-align: center;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .switch-div a {
+        text-decoration: none;
+        padding: 5px 20px;
+        width: 150px;
+        color: rgb(0, 0, 0);
+        transition: background-color 0.2s ease;
+      }
+      .switch-div a:hover {
+        background-color: rgba(58, 58, 58, 0.162);
+      }
+      .dark-left {
+        background-image: linear-gradient(
+          to left,
+          rgb(255, 255, 255) 50%,
+          rgb(72, 176, 255) 50%
+        );
+      }
+      .dark-right {
+        background-image: linear-gradient(
+          to right,
+          rgb(255, 255, 255) 50%,
+          rgb(72, 176, 255) 50%
+        );
+      }
+
+      .main-div {
+        text-align: left;
+        padding: 20px 30px;
+        background-color: rgb(255, 255, 255);
+        max-width: 50%;
+        min-width: 400px;
+        margin: 50px auto;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.11);
+        border-radius: 10px;
+      }
+      .styled-textarea {
+        min-width: 100%;
+        max-width: 600px;
+        height: 150px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        resize: vertical; /* Allows vertical resizing */
+        font-size: 16px;
+        color: #333;
+        background-color: #fff;
+        transition: border-color 0.3s, box-shadow 0.3s;
+      }
+
+      .styled-textarea:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+        outline: none; /* Removes default outline */
+      }
+
+      .textarea-label {
+        margin: 0px 0px;
+        font-weight: bold;
+        display: block;
+        color: #555;
+      }
+
+      /* **************** */
+      input[type="file"] {
+        margin-top: 20px;
+        position: relative;
+      }
+
+      input[type="file"]::file-selector-button {
+        width: 136px;
+        color: transparent;
+      }
+
+      /* Faked label styles and icon */
+      input[type="file"]::before {
+        position: absolute;
+        pointer-events: none;
+        top: 10px;
+        left: 16px;
+        height: 20px;
+        width: 20px;
+        content: "";
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230964B0'%3E%3Cpath d='M18 15v3H6v-3H4v3c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-3h-2zM7 9l1.41 1.41L11 7.83V16h2V7.83l2.59 2.58L17 9l-5-5-5 5z'/%3E%3C/svg%3E");
+      }
+
+      input[type="file"]::after {
+        position: absolute;
+        pointer-events: none;
+        top: 11px;
+        left: 40px;
+        color: #0964b0;
+        content: "Upload File";
+      }
+
+      /* ------- From Step 1 ------- */
+
+      /* file upload button */
+      input[type="file"]::file-selector-button {
+        border-radius: 4px;
+        padding: 0 16px;
+        height: 40px;
+        cursor: pointer;
+        background-color: white;
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        box-shadow: 0px 1px 0px rgba(0, 0, 0, 0.05);
+        margin-right: 16px;
+        transition: background-color 200ms;
+      }
+
+      /* file upload button hover state */
+      input[type="file"]::file-selector-button:hover {
+        background-color: #f3f4f6;
+      }
+
+      /* file upload button active state */
+      input[type="file"]::file-selector-button:active {
+        background-color: #e5e7eb;
+      }
+
+      textarea,
+      .limit-input,
+      button {
+        width: 100%;
+        margin: 10px 0;
+        padding: 10px;
+      }
+
+      .output-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .output-buttons button {
+        flex: 1 1 calc(50% - 10px);
+        padding: 10px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+      .output-buttons button:hover {
+        background-color: #0056b3;
+      }
+      .output-buttons button.copied {
+        background-color: #28a745; /* Green color for copied buttons */
+      }
+
+      @media (max-width: 768px) {
+        .main-div {
+          max-width: 90%;
+        }
+      }
+
+      @keyframes gradient-animation {
+        0% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0% 50%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-div">
+      <h2>Excel to SQL Generator</h2>
+      <label for="excelInput">Upload Excel File:</label>
+      <input
+        type="file"
+        id="excelInput"
+        accept=".xlsx, .xls"
+      /><br /><br /><br />
+
+      <h3 for="queryInput">Enter SQL Query:</h3>
+      <textarea
+        class="styled-textarea"
+        id="queryInput"
+        rows="4"
+        placeholder="Example: SELECT DISTINCT id_number, NULL grder_ngo, #Col2 wlice_prd FROM htfvgfdd.vhtrcfS WHERE id_number IN (#Col1);"
+      ></textarea
+      ><br /><br />
+
+      <button id="generateSQL">Generate SQL Queries</button><br />
+      <button id="downloadSQL" style="display: none">
+        Download SQL Statements as ZIP</button
+      ><br />
+      <h3>Generated SQL Queries:</h3>
+      <div class="output-buttons" id="outputButtons"></div>
+    </div>
+
+    <script>
+      document.getElementById("generateSQL").addEventListener("click", () => {
+        const fileInput = document.getElementById("excelInput");
+        const queryInput = document.getElementById("queryInput").value.trim();
+        const outputButtons = document.getElementById("outputButtons");
+
+        if (!fileInput.files[0]) {
+          alert("Please upload an Excel file.");
+          return;
+        }
+        if (!queryInput) {
+          alert("Please enter an SQL query.");
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          const data = new Uint8Array(event.target.result);
+          const workbook = XLSX.read(data, { type: "array" });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+          if (jsonData.length === 0) {
+            alert("The uploaded Excel file is empty or invalid.");
+            return;
+          }
+
+          // Clear previous SQL queries
+          outputButtons.innerHTML = "";
+
+          // Group rows by the second column
+          const groupedData = jsonData.reduce((acc, row) => {
+            const key = row[1]; // Group by the second column
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(row[0]); // Push the id_number (first column value)
+            return acc;
+          }, {});
+
+          // Generate SQL queries based on grouped data
+          const queries = [];
+
+          for (const key in groupedData) {
+            const idNumbers = groupedData[key].join(",\n"); // Join id_numbers with line breaks for formatting
+            let sql = queryInput
+              .replace(/#Col1/g, idNumbers)
+              .replace(/#Col2/g, key);
+            queries.push({ sql, fileName: key }); // Store both SQL and corresponding filename
+          }
+
+          // Create buttons to copy queries
+          queries.forEach((item, i) => {
+            const button = document.createElement("button");
+            button.textContent = `Query ${i + 1}`;
+            button.addEventListener("click", () => {
+              navigator.clipboard.writeText(item.sql).then(() => {
+                button.classList.add("copied");
+              });
+            });
+            outputButtons.appendChild(button);
+          });
+
+          // Enable download button
+          document.getElementById("downloadSQL").style.display = "block";
+          document.getElementById("downloadSQL").onclick = () => {
+            const zip = new JSZip();
+            queries.forEach((item) => {
+              zip.file(`Month_${item.fileName}.txt`, item.sql); // Use #Col2 value as the filename
+            });
+
+            zip.generateAsync({ type: "blob" }).then((content) => {
+              const url = URL.createObjectURL(content);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "sql_statements.zip";
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            });
+          };
+        };
+
+        reader.readAsArrayBuffer(fileInput.files[0]);
+      });
+    </script>
+  </body>
+</html>
